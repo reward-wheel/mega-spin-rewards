@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Mega Reward Wheel</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { background: #0c0f1d; color: #fff; text-align: center; overflow-x: hidden; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        
+        /* Dashboard Container */
+        .app-container { width: 100%; max-width: 420px; padding: 20px; background: linear-gradient(180deg, #14192f 0%, #0c0f1d 100%); min-height: 100vh; position: relative; box-shadow: 0 0 30px rgba(0,0,0,0.5); padding-bottom: 80px; }
+        
+        /* Trustpilot Header Badge */
+        .trustpilot-badge { display: flex; align-items: center; justify-content: center; gap: 6px; background: rgba(0, 184, 124, 0.1); border: 1px solid rgba(0, 184, 124, 0.3); padding: 8px; border-radius: 8px; margin-bottom: 15px; font-size: 12px; font-weight: bold; color: #00b87c; }
+        .tp-star { color: #fff; background: #00b87c; padding: 2px 4px; border-radius: 3px; font-size: 10px; margin-right: 1px; }
+
+        /* Header Stats bar */
+        .stats-header { display: flex; justify-content: space-between; margin-bottom: 25px; background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
+        .stat-box { text-align: center; }
+        .stat-box span { display: block; font-size: 11px; color: #8a99ad; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .stat-box strong { font-size: 18px; color: #00c6ff; }
+        .stat-box strong.wallet-bal { color: #28a745; }
+
+        /* The Wheel Engine UI */
+        .wheel-wrapper { position: relative; margin: 20px auto; width: 300px; height: 300px; }
+        .wheel-canvas { 
+            width: 300px; 
+            height: 300px; 
+            border-radius: 50%; 
+            border: 6px solid #fff; 
+            box-shadow: 0 0 20px rgba(255,62,108,0.4); 
+            transition: transform 5s cubic-bezier(0.1, 0.8, 0.1, 1); 
+            transform: rotate(0deg);
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+        }
+        .wheel-pointer { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 16px solid transparent; border-right: 16px solid transparent; border-top: 32px solid #ffcd3c; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); z-index: 10; }
+        
+        /* Interactive Elements */
+        .action-btn { background: linear-gradient(135deg, #ff3e6c 0%, #ff1f53 100%); border: none; color: white; padding: 16px 40px; font-size: 18px; font-weight: bold; border-radius: 50px; cursor: pointer; box-shadow: 0 6px 20px rgba(255,31,83,0.4); width: 100%; letter-spacing: 0.5px; transition: transform 0.2s; margin-top: 15px; }
+        .action-btn:active { transform: scale(0.98); }
+        
+        /* Referral & Urgency Modules */
+        .urgency-banner { margin: 15px 0; background: rgba(255,205,60,0.1); border: 1px dashed #ffcd3c; padding: 10px; border-radius: 8px; font-size: 13px; color: #ffcd3c; }
+        .refer-section { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 15px; border-radius: 12px; margin-top: 20px; text-align: left; }
+        .refer-section h3 { font-size: 14px; margin-bottom: 10px; color: #fff; display: flex; justify-content: space-between; }
+        .refer-input-grp { display: flex; gap: 8px; }
+        .refer-input-grp input { flex: 1; background: #080a14; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 10px; color: #fff; font-size: 12px; }
+        .copy-btn { background: #00c6ff; border: none; color: #000; font-weight: bold; padding: 0 15px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+
+        /* Reviews Feed */
+        .reviews-container { margin-top: 25px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; text-align: left; }
+        .reviews-container h4 { font-size: 13px; color: #8a99ad; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .review-card { background: #0c0f1d; border: 1px solid rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 8px; display: none; }
+        .review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .user-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: bold; }
+        .user-avatar { width: 24px; height: 24px; background: #343a40; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; }
+        .review-stars { color: #00b87c; font-size: 12px; }
+        .review-body { font-size: 12px; color: #bccadb; line-height: 1.4; }
+
+        /* Modals */
+        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 100; padding: 20px; }
+        .modal-card { background: #14192f; border: 2px solid rgba(255,255,255,0.1); padding: 30px 20px; border-radius: 16px; max-width: 360px; width: 100%; text-align: center; position: relative; }
+        .modal-card h2 { font-size: 24px; color: #ffcd3c; margin-bottom: 15px; }
+        .prize-metric { font-size: 22px; font-weight: bold; color: #fff; margin: 15px 0; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; }
+        .promo-container { background: #080a14; padding: 12px; border-radius: 8px; font-weight: bold; color: #ff3e6c; letter-spacing: 1px; font-size: 18px; margin: 15px 0; border: 1px dashed rgba(255,62,108,0.5); }
+        .modal-btn { background: #28a745; color: white; border: none; padding: 14px 28px; font-size: 15px; font-weight: bold; border-radius: 8px; width: 100%; cursor: pointer; display: inline-block; text-decoration: none; margin-top: 10px; }
+        .close-x { position: absolute; top: 12px; right: 15px; color: #aaa; font-size: 18px; cursor: pointer; }
+
+        /* Gateway Buttons */
+        .gateway-btn-group { display: flex; flex-direction: column; gap: 10px; margin: 20px 0 15px 0; }
+        .gateway-tile { display: flex; align-items: center; justify-content: space-between; background: #0c0f1d; border: 1px solid rgba(255,255,255,0.1); padding: 14px 16px; border-radius: 10px; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+        .gateway-tile:hover { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.2); }
+        .gw-left { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: bold; text-align: left; }
+        .gw-icon-box { font-size: 18px; width: 28px; display: flex; justify-content: center; }
+        .gw-arrow { color: #8a99ad; font-size: 14px; }
+
+        .security-badges { display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 15px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); }
+        .sec-badge { font-size: 10px; color: #8a99ad; font-weight: bold; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 4px; }
+
+        .activity-popup { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background: rgba(20,25,47,0.95); border: 1px solid rgba(0,198,255,0.3); padding: 10px 20px; border-radius: 50px; font-size: 12px; white-space: nowrap; transition: bottom 0.5s ease-in-out; z-index: 90; box-shadow: 0 4px 15px rgba(0,0,0,0.4); color: #fff; }
+
+        /* Live Chat Widget Box */
+        .chat-widget-bubble { position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; background: #00c6ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,198,255,0.4); cursor: pointer; z-index: 95; }
+        .chat-widget-bubble .ping { position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; background: #28a745; border-radius: 50%; border: 2px solid #fff; }
+        .chat-window { position: fixed; bottom: 85px; right: 20px; width: 300px; height: 380px; background: #14192f; border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; display: none; flex-direction: column; z-index: 95; box-shadow: 0 10px 25px rgba(0,0,0,0.5); overflow: hidden; }
+        .chat-header { background: #00c6ff; color: #000; padding: 12px; font-weight: bold; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+        .chat-body { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 12px; background: #0c0f1d; }
+        .chat-msg { max-width: 80%; padding: 8px 12px; border-radius: 8px; line-height: 1.4; }
+        .chat-msg.bot { background: rgba(255,255,255,0.08); color: #fff; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .chat-msg.user { background: #00c6ff; color: #000; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .chat-input-container { display: flex; border-top: 1px solid rgba(255,255,255,0.1); background: #14192f; }
+        .chat-input-container input { flex: 1; background: transparent; border: none; padding: 12px; color: #fff; font-size: 12px; outline: none; }
+        .chat-send-btn { background: #00c6ff; border: none; color: #000; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container" id="main-application-frame">
+        <div class="trustpilot-badge">
+            <span style="font-size:14px; letter-spacing:-1px;">★ Trustpilot</span>
+            <div style="margin-left: 5px;">
+                <span class="tp-star">★</span><span class="tp-star">★</span><span class="tp-star">★</span><span class="tp-star">★</span><span class="tp-star">★</span>
+            </div>
+            <span style="color:#bccadb; font-weight:normal; margin-left:2px;">4.9 Rating (Verified)</span>
+        </div>
+
+        <div class="stats-header">
+            <div class="stat-box"><span>Spins Left</span><strong id="credits">1</strong></div>
+            <div class="stat-box"><span>Invites</span><strong id="refer-count">0</strong></div>
+            <div class="stat-box"><span>Balance</span><strong class="wallet-bal"><span id="currency-symbol">$</span><span id="balance">0.00</span></strong></div>
+        </div>
+
+        <div class="urgency-banner">
+            ⚡ Offer ends in: <span id="timer" style="font-weight:bold;">05:00</span> | Rewards Remaining: <span id="reward-count" style="font-weight:bold;">19</span>
+        </div>
+
+        <div class="wheel-wrapper">
+            <div class="wheel-pointer"></div>
+            <canvas class="wheel-canvas" id="wheel"></canvas>
+        </div>
+
+        <button class="action-btn" onclick="spinNow()">SPIN NOW</button>
+
+        <div class="refer-section">
+            <h3><span>Invite Friends for Extra Spins</span> <span style="color:#00c6ff;">+2 Spins/Ref</span></h3>
+            <div class="refer-input-grp">
+                <input type="text" id="refer-link" readonly value="https://rewards.hub/?id=fetching...">
+                <button class="copy-btn" onclick="copyReferLink()">COPY</button>
+            </div>
+        </div>
+
+        <div class="reviews-container">
+            <h4>💬 Live Verified Payout Activity</h4>
+            <div id="reviews-feed-pool">
+                <div class="review-card" id="rc-0">
+                    <div class="review-header">
+                        <div class="user-meta"><div class="user-avatar" style="background:#4b69f2;">MK</div>Mark K. (Dubai)</div>
+                        <div class="review-stars">★★★★★</div>
+                    </div>
+                    <div class="review-body">Wow received my cash payout in 5 minutes after verification deposit! Highly recommended event.</div>
+                </div>
+                <div class="review-card" id="rc-1">
+                    <div class="review-header">
+                        <div class="user-meta"><div class="user-avatar" style="background:#e83e8c;">SA</div>Sarah A. (Abu Dhabi)</div>
+                        <div class="review-stars">★★★★★</div>
+                    </div>
+                    <div class="review-body">Just claimed my Temu free gift pack bundle! Code worked flawlessly on checkout. Thank you!!</div>
+                </div>
+                <div class="review-card" id="rc-2">
+                    <div class="review-header">
+                        <div class="user-meta"><div class="user-avatar" style="background:#28a745;">JW</div>John W. (USA)</div>
+                        <div class="review-stars">★★★★★</div>
+                    </div>
+                    <div class="review-body">Initially thought it was a scam layout but the transaction verification was secure. Got $40 straight to card node.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="prize-modal">
+        <div class="modal-card">
+            <span class="close-x" onclick="closeModal('prize-modal')">×</span>
+            <h2>🎉 REWARD LOCKED! 🎉</h2>
+            <div class="prize-metric" id="prize-text">Processing Asset...</div>
+            <p style="font-size: 13px; color: #bccadb; margin-bottom: 10px;" id="offer-desc">Your targeted reward variant configuration loaded successfully.</p>
+            <div class="promo-container" id="promo-code-display">------</div>
+            <a href="#" class="modal-btn" id="claim-btn-link" target="_blank">CLAIM NOW</a>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="pay-modal">
+        <div class="modal-card">
+            <span class="close-x" onclick="closeModal('pay-modal')">×</span>
+            <h2 style="color:#ff3e6c;">Verification Required</h2>
+            <p style="font-size: 13px; margin: 10px 0; color: #bccadb;" id="pay-modal-desc">Select a secure merchant node to clear pending verification credits and request instant payout.</p>
+            
+            <div class="gateway-btn-group">
+                <div class="gateway-tile" onclick="routeGateway('paypal')">
+                    <div class="gw-left">
+                        <div class="gw-icon-box" style="color:#003087;">🅿️</div>
+                        <div>
+                            <div>PayPal Secure Node</div>
+                            <div style="font-size:11px; color:#8a99ad; font-weight:normal;">Instant Bank/Wallet P2P Drop</div>
+                        </div>
+                    </div>
+                    <div class="gw-arrow">➔</div>
+                </div>
+
+                <div class="gateway-tile" onclick="routeGateway('crypto')">
+                    <div class="gw-left">
+                        <div class="gw-icon-box" style="color:#26a17b;">🪙</div>
+                        <div>
+                            <div>USDT (TRC-20 Network)</div>
+                            <div style="font-size:11px; color:#8a99ad; font-weight:normal;">Fastest Decentralized Escrow Node</div>
+                        </div>
+                    </div>
+                    <div class="gw-arrow">➔</div>
+                </div>
+
+                <div class="gateway-tile" onclick="routeGateway('wallet')">
+                    <div class="gw-left">
+                        <div class="gw-icon-box" style="color:#4285F4;">🍏</div>
+                        <div>
+                            <div>Google Pay / Apple Pay</div>
+                            <div style="font-size:11px; color:#8a99ad; font-weight:normal;">NFC Smart Card Link Encryption</div>
+                        </div>
+                    </div>
+                    <div class="gw-arrow">➔</div>
+                </div>
+
+                <div class="gateway-tile" onclick="routeGateway('card')">
+                    <div class="gw-left">
+                        <div class="gw-icon-box" style="color:#28a745;">💳</div>
+                        <div>
+                            <div>Credit or Debit Card</div>
+                            <div style="font-size:11px; color:#8a99ad; font-weight:normal;">Visa, MasterCard, Amex Checkout</div>
+                        </div>
+                    </div>
+                    <div class="gw-arrow">➔</div>
+                </div>
+            </div>
+            
+            <div class="security-badges">
+                <div class="sec-badge"><span style="color:#007bff;">💳</span> VISA</div>
+                <div class="sec-badge"><span style="color:#ff5f00;">💳</span> MasterCard</div>
+                <div class="sec-badge"><span style="color:#28a745;">🔒</span> TRC20 Secured</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="withdraw-modal">
+        <div class="modal-card">
+            <h2 style="color:#ff3e6c;">⚠️ Withdrawal Denied</h2>
+            <div style="margin: 20px 0; font-size: 15px; color:#fff;">
+                Minimum Withdrawal Limit: <span style="color:#28a745; font-weight:bold;">$50.00</span>
+            </div>
+            <p style="font-size: 13px; color: #8a99ad; margin-bottom: 20px;">
+                Your current balance does not satisfy the system network withdrawal threshold. Please add deposits to clear pending verification credits.
+            </p>
+            <button class="modal-btn" style="background:#00c6ff; color:#000; margin-bottom: 8px;" onclick="closeModal('withdraw-modal'); showPayModal();">Unlock Spins ($10)</button>
+            <button class="modal-btn" style="background:#6c757d;" onclick="closeModal('withdraw-modal')">Go Back</button>
+        </div>
+    </div>
+
+    <div class="activity-popup" id="live-notification">
+        <span id="notification-text">System booting verification matrix...</span>
+    </div>
+
+    <div class="chat-widget-bubble" onclick="toggleChatWindow()">
+        <span style="font-size:22px;">💬</span>
+        <div class="ping"></div>
+    </div>
+    <div class="chat-window" id="support-chat-frame">
+        <div class="chat-header">
+            <span>🔴 Live Help Desk Engine</span>
+            <span style="cursor:pointer; font-size:16px;" onclick="toggleChatWindow()">×</span>
+        </div>
+        <div class="chat-body" id="chat-scroller-node">
+            <div class="chat-msg bot">Hello! Welcome to the Smart Rewards Event Desk. How can I assist your wallet configurations today?</div>
+        </div>
+        <div class="chat-input-container">
+            <input type="text" id="chat-user-textbox" placeholder="Type your message description...">
+            <button class="chat-send-btn" onclick="sendUserChatMessage()">SEND</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("wheel");
+        const ctx = canvas.getContext("2d");
+        
+        const pixelRatio = window.devicePixelRatio || 1;
+        canvas.width = 300 * pixelRatio;
+        canvas.height = 300 * pixelRatio;
+        canvas.style.width = "300px";
+        canvas.style.height = "300px";
+        ctx.scale(pixelRatio, pixelRatio);
+
+        let audioCtx = null;
+        function playSoundSignal(type) {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'tick') {
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+                } else if (type === 'win') {
+                    osc.type = 'triangle'; osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1);
+                    osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2);
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+                }
+            } catch(e) { console.log("Audio pipeline muted."); }
+        }
+
+        let regionalConfig = {
+            currencySign: "$",
+            currencyRate: 1,
+            lang_win: "🎉 REWARD LOCKED! 🎉",
+            lang_withdraw_denied: "⚠️ Withdrawal Denied",
+            lang_min_limit: "Minimum Withdrawal Limit:",
+            lang_go_back: "Go Back",
+            names: ["Alex M.", "Jenny L.", "Sarah J.", "Michael W.", "Emma B."],
+            prizes: ["$32.50 Trial", "$100 Coupon", "$7.50 Cash", "Temu Free Gift", "$6.00 Cash", "60-90% Off Temu", "$0.05 Cents", "Shein $600 Pack"]
+        };
+
+        const regions = {
+            "AE": { 
+                currencySign: "AED ",
+                currencyRate: 3.67, 
+                lang_win: "🎉 تم قفل المكافأة! 🎉",
+                lang_withdraw_denied: "⚠️ تم رفض السحب",
+                lang_min_limit: "الحد الأدنى للسحب:",
+                lang_go_back: "العودة",
+                names: ["Zayed A.", "Fatima H.", "Youssef M.", "Amira S.", "Omar K."],
+                prizes: ["120 AED Trial", "360 AED Coupon", "27.5 AED Cash", "Temu Free Gift", "22 AED Cash", "60-90% Off Temu", "0.20 AED Cents", "Shein 2,200 AED Pack"]
+            }
+        };
+
+        let prizes = regionalConfig.prizes;
+        const colors = ["#ff3e6c", "#111111", "#ffcd3c", "#111111", "#00c6ff", "#111111", "#7f00ff", "#111111"];
+        const numSeg = prizes.length;
+        const arc = (2 * Math.PI) / numSeg;
+        
+        let credits = parseInt(localStorage.getItem("w26_credits"));
+        let refers = parseInt(localStorage.getItem("w26_refers")) || 0;
+        let balance = parseFloat(localStorage.getItem("w26_balance")) || 0.00;
+        let depositCount = parseInt(localStorage.getItem("w26_dep_count")) || 0;
+        let isSpinning = false;
+
+        function detectRegionAndApply() {
+            fetch('https://ipapi.co/json/')
+            .then(response => response.json())
+            .then(data => {
+                const country = data.country_code;
+                
+                if (country === "IN") {
+                    document.body.innerHTML = `
+                        <div style="margin-top: 100px; padding: 20px; text-align:center;">
+                            <h1 style="color: #ff3e6c; font-size: 28px; margin-bottom:10px;">🚫 403 - Access Denied</h1>
+                            <p style="color: #aaa; font-size: 16px;">This promotional campaign event is currently not available in your region.</p>
+                            <p style="color: #555; font-size: 12px; margin-top:30px;">Error Reference Node: REG_ERR_IN_2026</p>
+                        </div>`;
+                    return; 
+                }
+
+                if (regions[country]) {
+                    regionalConfig = regions[country];
+                    prizes = regionalConfig.prizes;
+                    document.querySelector("#withdraw-modal h2").innerText = regionalConfig.lang_withdraw_denied;
+                    document.querySelector("#withdraw-modal button:last-child").innerText = regionalConfig.lang_go_back;
+                }
+                initGame();
+            })
+            .catch(err => {
+                console.log("Geo IP pipeline failed. Operating standard fallback mapping.");
+                initGame();
+            });
+        }
+
+        function initGame() {
+            if (localStorage.getItem("w26_credits") === null) {
+                credits = 1;
+                localStorage.setItem("w26_credits", "1");
+                localStorage.setItem("w26_balance", "0.00");
+                localStorage.setItem("w26_dep_count", "0");
+            }
+            
+            document.getElementById("credits").innerText = credits;
+            document.getElementById("refer-count").innerText = refers;
+            document.getElementById("currency-symbol").innerText = regionalConfig.currencySign;
+            
+            let displayBal = balance * regionalConfig.currencyRate;
+            document.getElementById("balance").innerText = displayBal.toFixed(2);
+            
+            let localMinLimit = (50.00 * regionalConfig.currencyRate).toFixed(2);
+            document.getElementById("withdraw-modal").querySelector("div").innerHTML = 
+                `${regionalConfig.lang_min_limit} <span style="color:#28a745;">${regionalConfig.currencySign}${localMinLimit}</span>`;
+
+            draw();
+            runReviewFeedTicker();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, 300, 300);
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = "rgba(255,255,255,0.2)";
+            
+            for(let i=0; i<numSeg; i++) {
+                ctx.fillStyle = colors[i];
+                ctx.beginPath(); 
+                ctx.moveTo(150,150);
+                ctx.arc(150,150,145, i*arc, (i+1)*arc);
+                ctx.lineTo(150,150); 
+                ctx.fill(); 
+                ctx.stroke();
+                
+                ctx.save(); 
+                ctx.fillStyle = "#fff"; 
+                ctx.translate(150,150);
+                ctx.rotate(i*arc + arc/2); 
+                ctx.textAlign = "right";
+                
+                ctx.font = "bold 11px Arial, sans-serif"; 
+                ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+                ctx.shadowBlur = 2;
+                
+                ctx.fillText(prizes[i], 132, 4); 
+                ctx.restore();
+            }
+        }
+
+        let myUID = localStorage.getItem("w26_uid");
+        if (!myUID) { myUID = "u_" + Math.random().toString(36).substring(2, 8); localStorage.setItem("w26_uid", myUID); }
+        const currentURL = window.location.href.split('?')[0];
+        document.getElementById("refer-link").value = currentURL + "?id=" + myUID;
+
+        function spinNow() {
+            if (isSpinning) return;
+            if (credits <= 0) { showPayModal(); return; }
+            
+            credits--; 
+            localStorage.setItem("w26_credits", credits);
+            document.getElementById("credits").innerText = credits;
+            isSpinning = true;
+
+            let chosenIndex;
+            let deltaWin = 0;
+
+            if (balance === 0.00 && depositCount === 0) {
+                chosenIndex = 0; deltaWin = 32.50;
+            } else if (depositCount === 1 && balance < 40.00) {
+                chosenIndex = 2; deltaWin = 7.50;
+            } else if (depositCount === 2 && balance < 46.00) {
+                chosenIndex = 4; deltaWin = 6.00;
+            } else {
+                if (balance >= 49.90) {
+                    const promoSegments = [1, 3, 5, 7];
+                    chosenIndex = promoSegments[Math.floor(Math.random() * promoSegments.length)];
+                    deltaWin = 0;
+                } else {
+                    chosenIndex = 6; deltaWin = 0.05;
+                    if (balance + deltaWin > 49.90) deltaWin = 49.90 - balance;
+                }
+            }
+            
+            const degreesPerSegment = 360 / numSeg;
+            const targetAngle = 360 - (chosenIndex * degreesPerSegment) - (degreesPerSegment / 2);
+            const totalRotation = (360 * 6) + targetAngle;
+            
+            canvas.style.transform = `rotate(${totalRotation}deg)`;
+
+            let tickCount = 0;
+            let soundInterval = setInterval(() => {
+                if(tickCount < 45) { playSoundSignal('tick'); tickCount++; }
+                else { clearInterval(soundInterval); }
+            }, 100);
+
+            setTimeout(() => {
+                isSpinning = false;
+                playSoundSignal('win');
+                
+                if (deltaWin > 0) {
+                    balance = parseFloat((balance + deltaWin).toFixed(2));
+                    localStorage.setItem("w26_balance", balance);
+                    document.getElementById("balance").innerText = (balance * regionalConfig.currencyRate).toFixed(2);
+                    
+                    document.getElementById("prize-modal").querySelector("h2").innerText = regionalConfig.lang_win;
+                    document.getElementById("prize-text").innerText = `🎉 +${regionalConfig.currencySign}${(deltaWin * regionalConfig.currencyRate).toFixed(2)} Added to Wallet!`;
+                    document.getElementById("offer-desc").innerText = `Total verified funds updated successfully. Minimum payout target is ${regionalConfig.currencySign}${(50.00 * regionalConfig.currencyRate).toFixed(2)}.`;
+                    document.getElementById("promo-code-display").innerText = "CASH_CREDIT_OK";
+                    
+                    const claimBtn = document.getElementById("claim-btn-link");
+                    claimBtn.innerText = "Check Wallet & Payout";
+                    claimBtn.href = "#";
+                    claimBtn.onclick = function(e){ e.preventDefault(); closeModal('prize-modal'); attemptWithdrawal(); };
+                    
+                    document.getElementById("prize-modal").style.display = "flex";
+                } else {
+                    const prizeText = prizes[chosenIndex];
+                    document.getElementById("prize-modal").querySelector("h2").innerText = "🎉 REWARD LOCKED! 🎉";
+                    document.getElementById("prize-text").innerText = prizeText;
+                    const claimBtn = document.getElementById("claim-btn-link");
+                    const codeBox = document.getElementById("promo-code-display");
+                    const descText = document.getElementById("offer-desc");
+                    claimBtn.onclick = null; 
+                    
+                    if(chosenIndex === 1 || chosenIndex === 3 || chosenIndex === 5) {
+                        descText.innerText = "Get your exclusive free gifts and massive $100 bundle directly on your Temu App!";
+                        codeBox.innerText = "puah8821ihy";
+                        claimBtn.href = "https://temu.to/k/puah8821ihy";
+                        claimBtn.innerText = "Claim Free Temu Gift";
+                    } else {
+                        descText.innerText = "Get a $100-$600 coupon bundle, free gifts, and heavy premium discounts on your checkout!";
+                        codeBox.innerText = "8H5ZJ";
+                        claimBtn.href = "https://shein.top/YOUR_SHEIN_AFFILIATE_REPLACE"; 
+                        claimBtn.innerText = "Claim Shein Gift Pack";
+                    }
+                    document.getElementById("prize-modal").style.display = "flex";
+                }
+            }, 5100);
+        }
+
+        function attemptWithdrawal() {
+            let currentLocalBal = balance * regionalConfig.currencyRate;
+            let currentLocalMin = 50.00 * regionalConfig.currencyRate;
+            if(currentLocalBal < currentLocalMin) { showPayModal(); } 
+            else { alert("Processing validation via network gateway node... API Error 403."); }
+        }
+
+        function showPayModal() { document.getElementById("pay-modal").style.display = "flex"; }
+        function closeModal(id) { document.getElementById(id).style.display = "none"; }
+        
+        function routeGateway(targetMethod) {
+            if (targetMethod === 'paypal') {
+                alert("Redirecting to encrypted PayPal Checkout Node...");
+                window.location.href = "https://www.paypal.me/RajShukla457/10";
+            } 
+            else if (targetMethod === 'wallet') {
+                alert("Opening secure Credit/Debit card module compatible with Google Pay / Apple Pay smart systems...");
+                window.location.href = "https://checkout.stripe.com/YOUR_STRIPE_FALLBACK_LINK";
+            } 
+            else if (targetMethod === 'card') {
+                alert("Opening merchant standard processing gateway via secure checkout...");
+                window.location.href = "https://checkout.stripe.com/YOUR_STRIPE_FALLBACK_LINK";
+            } 
+            else if (targetMethod === 'crypto') {
+                // Updated with your exact Binance USDT TRC-20 Address
+                let cryptoAddress = "TLfAonUYLZScEUbDzpfZUjyYx8u3uwCTfu"; 
+                
+                prompt("WARNING: Only send USDT (TRON / TRC-20 Network) assets to this address. Other assets will be lost. Copy deposit address:", cryptoAddress);
+                
+                setTimeout(() => {
+                    depositCount++; credits++;
+                    localStorage.setItem("w26_dep_count", depositCount);
+                    localStorage.setItem("w26_credits", credits);
+                    document.getElementById("credits").innerText = credits;
+                    closeModal("pay-modal");
+                    alert("USDT TRC-20 transaction scan request broadcasted! 1 Premium Spin Synced.");
+                }, 1000);
+            }
+        }
+
+        function copyReferLink() {
+            const copyText = document.getElementById("refer-link");
+            copyText.select(); navigator.clipboard.writeText(copyText.value);
+            alert("Invitation link copied successfully!");
+        }
+
+        let reviewIndex = 0;
+        function runReviewFeedTicker() {
+            document.getElementById("rc-0").style.display = "block";
+            setInterval(() => {
+                document.getElementById(`rc-${reviewIndex}`).style.display = "none";
+                reviewIndex = (reviewIndex + 1) % 3;
+                document.getElementById(`rc-${reviewIndex}`).style.display = "block";
+            }, 6000);
+        }
+
+        function toggleChatWindow() {
+            const chatWin = document.getElementById("support-chat-frame");
+            chatWin.style.display = chatWin.style.display === "flex" ? "none" : "flex";
+        }
+        function sendUserChatMessage() {
+            const inputField = document.getElementById("chat-user-textbox");
+            const scroller = document.getElementById("chat-scroller-node");
+            if(!inputField.value.trim()) return;
+
+            let userMsg = document.createElement("div");
+            userMsg.className = "chat-msg user";
+            userMsg.innerText = inputField.value;
+            scroller.appendChild(userMsg);
+            
+            let userText = inputField.value.toLowerCase();
+            inputField.value = "";
+            scroller.scrollTop = scroller.scrollHeight;
+
+            setTimeout(() => {
+                let botMsg = document.createElement("div");
+                botMsg.className = "chat-msg bot";
+                if(userText.includes("withdraw") || userText.includes("money") || userText.includes("pay")) {
+                    botMsg.innerText = "System Audit: Withdrawal validation pipeline requires clearing verification credits. Please complete processing deposit token to automatically drop funds to your banking network node.";
+                } else {
+                    botMsg.innerText = "Your account diagnostic token status is active. Please complete session parameters or clear account deposits to proceed further.";
+                }
+                scroller.appendChild(botMsg);
+                scroller.scrollTop = scroller.scrollHeight;
+            }, 1200);
+        }
+
+        let time = 300; 
+        setInterval(() => {
+            let mins = Math.floor(time / 60); let secs = time % 60;
+            secs = secs < 10 ? '0' + secs : secs;
+            document.getElementById("timer").innerText = `${mins}:${secs}`;
+            if(time > 0) time--;
+        }, 1000);
+
+        let rewardsCount = 19;
+        setInterval(() => {
+            if(rewardsCount > 3) { rewardsCount -= Math.floor(Math.random() * 2); document.getElementById("reward-count").innerText = rewardsCount; }
+        }, 14000);
+
+        function showNotification() {
+            const randomName = regionalConfig.names[Math.floor(Math.random() * regionalConfig.names.length)];
+            const localAmounts = [
+                `${regionalConfig.currencySign}${(50 * regionalConfig.currencyRate).toLocaleString()}`,
+                "iPhone 16 Pro Max",
+                `Premium Crypto Wallet`,
+                `${regionalConfig.currencySign}${(100 * regionalConfig.currencyRate).toLocaleString()}`
+            ];
+            const randomAmount = localAmounts[Math.floor(Math.random() * localAmounts.length)];
+            
+            const notificationBox = document.getElementById("live-notification");
+            const notificationText = document.getElementById("notification-text");
+            
+            notificationText.innerHTML = `<b>${randomName}</b> successfully withdrew <b>${randomAmount}</b>`;
+            notificationBox.style.bottom = "20px";
+            setTimeout(() => { notificationBox.style.bottom = "-100px"; }, 4000);
+        }
+        setInterval(showNotification, 11000);
+
+        detectRegionAndApply();
+    </script>
+</body>
+</html>
